@@ -4,3 +4,9 @@ __pycache__/
 *.pyc
 serve
 $null
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+override.tf
