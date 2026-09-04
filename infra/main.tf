@@ -33,3 +33,7 @@ module "dynamodb" {
   source      = "./modules/dynamodb"
   environment = var.environment
 }
+module "messaging" {
+  source      = "./modules/messaging"
+  environment = var.environment
+}
