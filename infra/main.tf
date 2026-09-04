@@ -14,3 +14,11 @@ module "eks" {
 module "ecr" {
   source = "./modules/ecr"
 }
+
+module "rds" {
+  source              = "./modules/rds"
+  environment         = var.environment
+  vpc_id              = module.networking.vpc_id
+  vpc_cidr            = module.networking.vpc_cidr_block
+  private_subnet_ids  = module.networking.private_subnet_ids
+}
