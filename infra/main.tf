@@ -29,3 +29,7 @@ module "cache" {
   vpc_cidr            = module.networking.vpc_cidr_block
   private_subnet_ids  = module.networking.private_subnet_ids
 }
+module "dynamodb" {
+  source      = "./modules/dynamodb"
+  environment = var.environment
+}
