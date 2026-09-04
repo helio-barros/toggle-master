@@ -7,4 +7,5 @@ os.environ.setdefault("AUTH_SERVICE_URL", "http://fake-auth-service:8000")
 
 # Evita que o app.py tente conectar de verdade no Postgres ao ser importado
 import psycopg2.pool
+
 psycopg2.pool.SimpleConnectionPool = MagicMock(return_value=MagicMock())

@@ -1,0 +1,5 @@
+﻿[lint]
+# BLE001 (except Exception genérico) é usado deliberadamente nos handlers HTTP
+# dos microsservicos para sempre devolver um JSON de erro ao cliente em vez de
+# vazar stack trace ou derrubar o processo. Decisao de projeto, nao descuido.
+ignore = ["BLE001"]
