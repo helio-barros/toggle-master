@@ -37,3 +37,40 @@ module "messaging" {
   source      = "./modules/messaging"
   environment = var.environment
 }
+
+resource "aws_iam_role_policy" "node_sqs_dynamodb" {
+  name = "${var.environment}-node-sqs-dynamodb"
+  role = module.eks.node_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl"
+        ]
+        Resource = [
+          module.messaging.queue_arn,
+          module.messaging.dlq_arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:DeleteItem"
+        ]
+        Resource = module.dynamodb.table_arn
+      }
+    ]
+  })
+}
