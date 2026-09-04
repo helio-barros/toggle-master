@@ -22,3 +22,10 @@ module "rds" {
   vpc_cidr            = module.networking.vpc_cidr_block
   private_subnet_ids  = module.networking.private_subnet_ids
 }
+module "cache" {
+  source              = "./modules/cache"
+  environment         = var.environment
+  vpc_id              = module.networking.vpc_id
+  vpc_cidr            = module.networking.vpc_cidr_block
+  private_subnet_ids  = module.networking.private_subnet_ids
+}
