@@ -1,5 +1,4 @@
 ﻿name: evaluation-service CI
-
 on:
   push:
     branches: [main]
@@ -10,9 +9,10 @@ on:
   pull_request:
     paths:
       - "evaluation-service/**"
-
 jobs:
   ci:
+    permissions:
+      contents: write
     uses: ./.github/workflows/_service-ci.yml
     with:
       service_name: evaluation-service

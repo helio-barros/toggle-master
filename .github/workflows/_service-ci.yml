@@ -1,5 +1,4 @@
-name: Service CI Template
-
+﻿name: Service CI Template
 on:
   workflow_call:
     inputs:
@@ -18,7 +17,6 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -27,90 +25,105 @@ jobs:
         working-directory: ${{ inputs.service_name }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Go
         if: inputs.language == 'go'
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
           cache-dependency-path: ${{ inputs.service_name }}/go.sum
-
       - name: Setup Python
         if: inputs.language == 'python'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies (Go)
         if: inputs.language == 'go'
         run: go mod download
-
       - name: Install dependencies (Python)
         if: inputs.language == 'python'
         run: pip install -r requirements.txt
-
       - name: Run tests (Go)
         if: inputs.language == 'go'
         run: go test ./... -v
-
       - name: Run tests (Python)
         if: inputs.language == 'python'
         run: |
           pip install pytest
           pytest -q
-
       - name: Lint (Go)
         if: inputs.language == 'go'
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: ${{ inputs.service_name }}
-
       - name: Lint (Python)
         if: inputs.language == 'python'
         run: |
           pip install ruff
           ruff check .
-
       - name: SAST - Semgrep
         uses: semgrep/semgrep-action@v1
         with:
           config: auto
-
       - name: SCA - Trivy filesystem scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.service_name }}
           severity: HIGH,CRITICAL
-
   docker-build-push:
     needs: build-test
     runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.ecr-login.outputs.registry }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws_region }}
-
       - name: Login to ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
-
       - name: Build image
         run: docker build -t ${{ inputs.service_name }}:${{ github.sha }} ./${{ inputs.service_name }}
-
       - name: Scan image - Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ inputs.service_name }}:${{ github.sha }}
           severity: HIGH,CRITICAL
-
       - name: Tag and push to ECR
         if: github.ref == 'refs/heads/main'
         run: |
           docker tag ${{ inputs.service_name }}:${{ github.sha }} ${{ steps.ecr-login.outputs.registry }}/${{ inputs.service_name }}:${{ github.sha }}
           docker push ${{ steps.ecr-login.outputs.registry }}/${{ inputs.service_name }}:${{ github.sha }}
+  update-gitops-tag:
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Atualizar tag da imagem no manifesto GitOps
+        run: |
+          sed -i -E "s#(image: ${{ needs.docker-build-push.outputs.registry }}/${{ inputs.service_name }}):[a-f0-9]+#\1:${{ github.sha }}#" gitops/${{ inputs.service_name }}/manifests.yaml
+      - name: Commit e push (com retry em caso de conflito)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gitops/${{ inputs.service_name }}/manifests.yaml
+          if git diff --cached --quiet; then
+            echo "Nada mudou, pulando commit."
+            exit 0
+          fi
+          git commit -m "gitops: atualiza imagem do ${{ inputs.service_name }} para ${{ github.sha }} [skip ci]"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            git pull --rebase origin main
+            sleep $((RANDOM % 5 + 1))
+          done
+          exit 1
