@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: evaluation-service
-          image: 986263532741.dkr.ecr.us-east-2.amazonaws.com/evaluation-service:a7e3006599bc9256f777a98e7b4b4cc96d86f891
+          image: 986263532741.dkr.ecr.us-east-2.amazonaws.com/evaluation-service:e2a0b6405e53f2bfe46557dd09fcf4f3f69d43a8
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8004
