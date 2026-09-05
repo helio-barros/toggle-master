@@ -10,3 +10,5 @@ infra/.terraform/
 *.tfvars
 crash.log
 override.tf
+
+infra/tf_outputs.json
