@@ -61,15 +61,16 @@ jobs:
           pip install ruff
           ruff check .
       - name: SAST - Semgrep
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: auto
+        run: |
+          pip install semgrep
+          semgrep scan --config p/security-audit --config p/python --error  
       - name: SCA - Trivy filesystem scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.service_name }}
           severity: HIGH,CRITICAL
+          exit-code: '1'
   docker-build-push:
     needs: build-test
     runs-on: ubuntu-latest
