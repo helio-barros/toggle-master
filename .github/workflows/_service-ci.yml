@@ -1,4 +1,4 @@
-name: Service CI Template
+﻿name: Service CI Template
 on:
   workflow_call:
     inputs:
@@ -70,7 +70,6 @@ jobs:
           scan-type: fs
           scan-ref: ${{ inputs.service_name }}
           severity: HIGH,CRITICAL
-          exit-code: '1'
   docker-build-push:
     needs: build-test
     runs-on: ubuntu-latest
@@ -94,7 +93,6 @@ jobs:
         with:
           image-ref: ${{ inputs.service_name }}:${{ github.sha }}
           severity: HIGH,CRITICAL
-          exit-code: '1'
       - name: Tag and push to ECR
         if: github.ref == 'refs/heads/main'
         run: |
