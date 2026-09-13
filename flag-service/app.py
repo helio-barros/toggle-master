@@ -137,7 +137,7 @@ def get_flag(name):
     try:
         conn = pool.getconn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute(f"SELECT * FROM flags WHERE name = '{name}'") ##("SELECT * FROM flags WHERE name = %s", (name,))
+        cur.execute("SELECT * FROM flags WHERE name = %s", (name,))
         flag = cur.fetchone()
         if not flag:
             return jsonify({"error": "Flag não encontrada"}), 404
@@ -224,4 +224,4 @@ def delete_flag(name):
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", "8002"))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='172.0.0.1', port=port, debug=False)
