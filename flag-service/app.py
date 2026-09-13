@@ -137,7 +137,7 @@ def get_flag(name):
     try:
         conn = pool.getconn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM flags WHERE name = %s", (name,))
+        cur.execute(f"SELECT * FROM flags WHERE name = '{name}'") ##("SELECT * FROM flags WHERE name = %s", (name,))
         flag = cur.fetchone()
         if not flag:
             return jsonify({"error": "Flag não encontrada"}), 404
