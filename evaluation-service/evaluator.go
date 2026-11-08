@@ -189,6 +189,7 @@ func (a *App) runEvaluationLogic(info *CombinedFlagInfo, userID string) bool {
 
 func getDeterministicBucket(input string) int {
 	// Usamos SHA1 (rápido) e pegamos os primeiros 4 bytes
+	// nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-sha1 -- hash nao criptografico: so distribui o usuario em bucket 0-99 (rollout por porcentagem)
 	hasher := sha1.New()
 	hasher.Write([]byte(input))
 	hash := hasher.Sum(nil)
