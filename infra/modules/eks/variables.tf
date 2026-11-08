@@ -33,3 +33,9 @@ variable "max_size" {
   type    = number
   default = 3
 }
+
+variable "additional_admin_principals" {
+  description = "ARNs IAM adicionais com permissao de cluster-admin no EKS"
+  type        = list(string)
+  default     = []
+}

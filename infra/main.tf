@@ -9,6 +9,10 @@ module "eks" {
   vpc_id             = module.networking.vpc_id
   public_subnet_ids  = module.networking.public_subnet_ids
   private_subnet_ids = module.networking.private_subnet_ids
+  additional_admin_principals = [
+    "arn:aws:iam::177106922032:user/pedro",
+    "arn:aws:iam::177106922032:user/victor",
+  ]
 }
 
 module "ecr" {
