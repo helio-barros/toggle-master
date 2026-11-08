@@ -1,0 +1,19 @@
+# Risco aceito: dependencias indiretas do driver pgx v4 (auth-service).
+# O codigo nao importa x/crypto/ssh; pgproto3 v2 nao tem correcao publicada.
+# Revisar ate 2027-01-31 (atualizar Go 1.25 + x/crypto/x/text).
+CVE-2026-32286 exp:2027-01-31
+CVE-2024-45337 exp:2027-01-31
+CVE-2025-22869 exp:2027-01-31
+CVE-2025-47913 exp:2027-01-31
+CVE-2026-39828 exp:2027-01-31
+CVE-2026-39829 exp:2027-01-31
+CVE-2026-39830 exp:2027-01-31
+CVE-2026-39831 exp:2027-01-31
+CVE-2026-39832 exp:2027-01-31
+CVE-2026-39835 exp:2027-01-31
+CVE-2026-42508 exp:2027-01-31
+CVE-2026-46595 exp:2027-01-31
+CVE-2026-46597 exp:2027-01-31
+CVE-2026-56854 exp:2027-01-31
+CVE-2026-56851 exp:2027-01-31
+CVE-2026-56852 exp:2027-01-31
