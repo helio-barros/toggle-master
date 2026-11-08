@@ -201,4 +201,5 @@ def delete_rule(flag_name):
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", "8003"))
+    # nosemgrep: python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host -- pod K8s precisa escutar em 0.0.0.0; em producao usamos gunicorn (ver Dockerfile)
     app.run(host='0.0.0.0', port=port, debug=False)
