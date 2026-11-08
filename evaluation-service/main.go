@@ -105,7 +105,8 @@ func main() {
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
-	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
+	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
+	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls -- TLS termina no Ingress/ALB; trafego interno do cluster
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
