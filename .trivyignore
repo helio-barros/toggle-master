@@ -17,3 +17,17 @@ CVE-2026-46597 exp:2027-01-31
 CVE-2026-56854 exp:2027-01-31
 CVE-2026-56851 exp:2027-01-31
 CVE-2026-56852 exp:2027-01-31
+
+# Risco aceito: dependencias indiretas de golang.org/x/net nos services Go
+# (evaluation-service, auth-service). Codigo nao serve HTML nem usa idna/dns
+# diretamente; versoes fixadas disponiveis em x/net v0.62.0.
+# Revisar ate 2027-01-31 (bump x/net + go mod tidy em todos os services Go).
+CVE-2023-45288 exp:2027-01-31
+CVE-2024-45338 exp:2027-01-31
+CVE-2026-25681 exp:2027-01-31
+CVE-2026-27136 exp:2027-01-31
+CVE-2026-33814 exp:2027-01-31
+CVE-2026-39821 exp:2027-01-31
+CVE-2026-46600 exp:2027-01-31
+CVE-2026-78661 exp:2027-01-31
+CVE-2026-78669 exp:2027-01-31
