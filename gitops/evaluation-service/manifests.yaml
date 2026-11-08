@@ -6,10 +6,10 @@ metadata:
 data:
   PORT: "8004"
   AWS_REGION: "us-east-2"
-  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/986263532741/toggle-master-evaluation-events"
+  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/177106922032/toggle-master-evaluation-events"
   FLAG_SERVICE_URL: "http://flag-service:8002"
   TARGETING_SERVICE_URL: "http://targeting-service:8003"
-  REDIS_URL: "redis://togglemaster-redis.sgmrw5.0001.use2.cache.amazonaws.com:6379"
+  REDIS_URL: "redis://togglemaster-redis.c761si.0001.use2.cache.amazonaws.com:6379"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: evaluation-service
-          image: 986263532741.dkr.ecr.us-east-2.amazonaws.com/evaluation-service:dc4654967fd1e6c04f36feedee06216bc10932d2
+          image: 177106922032.dkr.ecr.us-east-2.amazonaws.com/evaluation-service:dc4654967fd1e6c04f36feedee06216bc10932d2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8004

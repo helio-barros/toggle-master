@@ -6,7 +6,7 @@ metadata:
 data:
   PORT: "8005"
   AWS_REGION: "us-east-2"
-  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/986263532741/toggle-master-evaluation-events"
+  AWS_SQS_URL: "https://sqs.us-east-2.amazonaws.com/177106922032/toggle-master-evaluation-events"
   AWS_DYNAMODB_TABLE: "ToggleMasterAnalytics"
 ---
 apiVersion: apps/v1
@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: 986263532741.dkr.ecr.us-east-2.amazonaws.com/analytics-service:dc4654967fd1e6c04f36feedee06216bc10932d2
+          image: 177106922032.dkr.ecr.us-east-2.amazonaws.com/analytics-service:dc4654967fd1e6c04f36feedee06216bc10932d2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8005
