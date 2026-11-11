@@ -1,0 +1,73 @@
+# gitops/monitoring/loki-values.yaml
+# Loki em modo SingleBinary (perfil minimo).
+# Simples para TC: 1 replica, storage filesystem em PVC,
+# sem minio, sem gateway. Nao usar em producao real.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2026-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 72h
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+# Desativa modos escalaveis (read/write/backend)
+read:    { replicas: 0 }
+write:   { replicas: 0 }
+backend: { replicas: 0 }
+
+# Nao precisamos de gateway nem minio para TC
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits:   { memory: 64Mi }
+
+minio:
+  enabled: false
+
+# Caches em memoria desligados para economizar RAM
+chunksCache:  { enabled: false }
+resultsCache: { enabled: false }
+
+# Testes do chart desabilitados (nao sao necessarios em runtime)
+test:
+  enabled: false
+
+# Monitoring do proprio Loki (self-monitoring com Promtail interno) desligado,
+# pois promtail global ja coleta todos os pods
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false

@@ -1,0 +1,31 @@
+# gitops/monitoring/promtail-values.yaml
+# Promtail roda como DaemonSet (1 pod por node) e envia logs
+# de TODOS os containers do cluster para o Loki.
+
+config:
+  # Aponta para o service do Loki criado pelo chart loki (gateway)
+  clients:
+    - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+
+  # Pipelines adicionam labels uteis: namespace, pod, container, app
+  snippets:
+    pipelineStages:
+      - cri: {}
+      # Extrai do JSON (quando aplicavel) campo level
+      - match:
+          selector: '{container=~".+"}'
+          stages:
+            - regex:
+                expression: '^(?P<level>(?i)debug|info|warn|warning|error|fatal)'
+            - labels:
+                level:
+
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits:   { memory: 128Mi }
+
+# Expoe metricas do proprio promtail para o Prometheus descobrir
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack

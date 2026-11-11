@@ -1,0 +1,104 @@
+# gitops/monitoring/kube-prometheus-stack-values.yaml
+# Perfil enxuto para 2 nodes m7i-flex.large (8 GiB cada).
+# EKS: control plane eh gerenciado pela AWS, entao desabilitamos
+# os scrapers de controller-manager/etcd/scheduler/proxy.
+
+fullnameOverride: kube-prometheus-stack
+
+# ---------------- Prometheus Operator ----------------
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits:   { memory: 200Mi }
+
+# ---------------- Prometheus ----------------
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits:   { memory: 1Gi }
+    # Descobre ServiceMonitors/PodMonitors de TODOS os namespaces
+    # (nao so os marcados com a label do chart). Importante para o
+    # otel-collector e para o nosso dashboard custom descobrirem alvos.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# ---------------- Alertmanager ----------------
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { memory: 128Mi }
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+
+# ---------------- Grafana ----------------
+grafana:
+  enabled: true
+  # Senha inicial. TROCAR apos o primeiro login via UI.
+  adminPassword: "ChangeMe-Grafana-2026"
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClassName: gp3
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { memory: 256Mi }
+  service:
+    type: ClusterIP
+  # Datasource do Loki pre-provisionado (o Prometheus ja vem por padrao do chart)
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      access: proxy
+      isDefault: false
+  # Sidecar que varre ConfigMaps/Secrets por dashboards e datasources extras.
+  # Vai facilitar a gente versionar dashboards custom no git.
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      label: grafana_dashboard
+      labelValue: "1"
+    datasources:
+      enabled: true
+      searchNamespace: ALL
+
+# ---------------- kube-state-metrics ----------------
+kube-state-metrics:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { memory: 128Mi }
+
+# ---------------- node-exporter (DaemonSet) ----------------
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits:   { memory: 64Mi }
+
+# ---------------- Desabilita scrapers nao aplicaveis ao EKS ----------------
+kubeControllerManager: { enabled: false }
+kubeEtcd:              { enabled: false }
+kubeScheduler:         { enabled: false }
+kubeProxy:             { enabled: false }
+
+# Mantemos kubelet + apiserver + coreDNS (que o EKS expoe)
