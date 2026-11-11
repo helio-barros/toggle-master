@@ -1,0 +1,122 @@
+# gitops/monitoring/otel-collector-values.yaml
+# OpenTelemetry Collector central para rotear traces/metrics/logs
+# dos 5 microservices ate Prometheus (metricas), Loki (logs) e
+# Datadog (APM + traces + metricas + logs).
+
+# Imagem contrib: traz exporter Datadog e Loki (nao vem no core)
+mode: deployment
+replicaCount: 1
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+# Expoe a API key do Datadog como env var (consumida pelo exporter)
+extraEnvs:
+  - name: DATADOG_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: datadog-secrets
+        key: api-key
+
+resources:
+  requests: { cpu: 100m, memory: 200Mi }
+  limits:   { memory: 400Mi }
+
+# Services que ele expoe (OTLP gRPC e HTTP + metricas proprias)
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+
+# Service Monitor para o proprio Prometheus coletar as metricas do Collector
+serviceMonitor:
+  enabled: true
+
+# ---------------- CONFIG PRINCIPAL ----------------
+# Substitui integralmente o default do chart
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    # Protege contra OOM
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+    # Agrupa envios para reduzir overhead
+    batch:
+      send_batch_size: 1000
+      timeout: 10s
+    # Adiciona atributos globais em todas as telemetrias
+    resource:
+      attributes:
+        - key: deployment.environment
+          value: production
+          action: upsert
+        - key: cluster.name
+          value: togglemaster
+          action: upsert
+
+  exporters:
+    # APM + traces + metricas + logs para o Datadog
+    datadog:
+      api:
+        site: datadoghq.com
+        key: ${env:DATADOG_API_KEY}
+      hostname: togglemaster-k8s
+    # Metricas para o Prometheus local (precisa remote-write receiver habilitado no Prometheus)
+    prometheusremotewrite:
+      endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+      tls:
+        insecure: true
+      resource_to_telemetry_conversion:
+        enabled: true
+    # Logs para o Loki local
+    otlphttp/loki:
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp
+    # debug util durante setup; remover apos validar
+    debug:
+      verbosity: basic
+
+  service:
+    telemetry:
+      logs:
+        level: info
+      metrics:
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0
+                  port: 8888
+    pipelines:
+      traces:
+        receivers:  [otlp]
+        processors: [memory_limiter, resource, batch]
+        exporters:  [datadog, debug]
+      metrics:
+        receivers:  [otlp]
+        processors: [memory_limiter, resource, batch]
+        exporters:  [prometheusremotewrite, datadog, debug]
+      logs:
+        receivers:  [otlp]
+        processors: [memory_limiter, resource, batch]
+        exporters:  [otlphttp/loki, datadog, debug]
