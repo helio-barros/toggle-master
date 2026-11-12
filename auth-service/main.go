@@ -24,7 +24,11 @@ func main() {
 	// --- OpenTelemetry ---
 	ctx := context.Background()
 	shutdownTracer := initTracer(ctx, "auth-service")
-	defer shutdownTracer(ctx)
+	defer func() {
+		if err := shutdownTracer(ctx); err != nil {
+			log.Printf("otel: shutdown error: %v", err)
+		}
+	}()
 
 	// --- Configuração ---
 	port := os.Getenv("PORT")
