@@ -11,4 +11,6 @@ COPY . .
 
 EXPOSE 8002
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8002", "app:app"]
+RUN opentelemetry-bootstrap -a install
+
+CMD ["opentelemetry-instrument", "gunicorn", "--bind", "0.0.0.0:8002", "app:app"]

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Contexto global para o Redis
@@ -29,6 +30,11 @@ type App struct {
 
 func main() {
 	_ = godotenv.Load() // Carrega .env para dev local
+
+	// --- OpenTelemetry ---
+	bgctx := context.Background()
+	shutdownTracer := initTracer(bgctx, "evaluation-service")
+	defer shutdownTracer(bgctx)
 
 	// --- Configuração ---
 	port := os.Getenv("PORT")
@@ -105,9 +111,11 @@ func main() {
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
-	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
+	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
+	// Envolve o mux para gerar spans por rota automaticamente.
+	handler := otelhttp.NewHandler(mux, "evaluation-service")
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls -- TLS termina no Ingress/ALB; trafego interno do cluster
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -8,6 +8,9 @@ RUN go mod download
 
 COPY . .
 
+# Resolve/baixa novas deps OTel e atualiza go.sum
+RUN go mod tidy
+
 RUN CGO_ENABLED=0 go build -o evaluation-service .
 
 

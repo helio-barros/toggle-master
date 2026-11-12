@@ -9,6 +9,9 @@ RUN go mod download
 # Copia o restante do código-fonte
 COPY . .
 
+# Resolve/baixa novas deps OTel e atualiza go.sum
+RUN go mod tidy
+
 RUN CGO_ENABLED=0 go build -o auth-service .
 
 # ----------- Estágio 2: Runtime -----------
