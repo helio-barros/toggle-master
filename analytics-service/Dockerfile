@@ -10,4 +10,6 @@ COPY . .
 
 EXPOSE 8005
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8005", "app:app"]
+RUN opentelemetry-bootstrap -a install
+
+CMD ["opentelemetry-instrument", "gunicorn", "--bind", "0.0.0.0:8005", "app:app"]
