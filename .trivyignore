@@ -31,3 +31,13 @@ CVE-2026-39821 exp:2027-01-31
 CVE-2026-46600 exp:2027-01-31
 CVE-2026-78661 exp:2027-01-31
 CVE-2026-78669 exp:2027-01-31
+# Risco aceito: CVEs de deps do stack de telemetria (OTel SDK + gRPC transitivo)
+# - OTel PATH hijacking (CVE-2026-24051, 39883): so afeta BSD/Solaris, rodamos Linux
+# - gRPC CVEs: usado SO para telemetria interna cluster->OTel Collector, nao expoe API publica
+# Revisar ate 2027-01-31 (bump otel >= v1.43.0 e grpc >= v1.83.1).
+CVE-2026-24051 exp:2027-01-31
+CVE-2026-39883 exp:2027-01-31
+CVE-2026-33186 exp:2027-01-31
+CVE-2026-84304 exp:2027-01-31
+CVE-2026-84445 exp:2027-01-31
+GHSA-hrxh-6v49-42gf exp:2027-01-31
