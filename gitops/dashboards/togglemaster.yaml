@@ -1,0 +1,111 @@
+# gitops/monitoring/dashboard-togglemaster.yaml
+# Dashboard custom do ToggleMaster (Fase 4 Tech Challenge).
+# O sidecar do Grafana (configurado em kube-prometheus-stack-values.yaml:
+# sidecar.dashboards.enabled=true, label=grafana_dashboard=1) importa
+# ConfigMaps com essa label automaticamente, sem restart do Grafana.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: togglemaster-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  togglemaster.json: |
+    {
+      "title": "ToggleMaster — Observabilidade (Fase 4 TC)",
+      "uid": "togglemaster-tc4",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "15s",
+      "time": {"from": "now-30m", "to": "now"},
+      "tags": ["togglemaster", "tech-challenge", "fase-4"],
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "CPU por node (%)",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 7},
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Memória usada por node (%)",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 7},
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Pods Running — namespace togglemaster",
+          "gridPos": {"x": 0, "y": 7, "w": 24, "h": 4},
+          "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "value"}}},
+          "options": {"colorMode": "background", "graphMode": "none", "textMode": "value_and_name"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum by (deployment) (kube_deployment_status_replicas_available{namespace=\"togglemaster\"})",
+              "legendFormat": "{{deployment}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Request rate por service (OTel → Prometheus)",
+          "gridPos": {"x": 0, "y": 11, "w": 24, "h": 8},
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\".*-service\"}[5m]))",
+              "legendFormat": "{{service_name}} (Go)"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\".*-service\"}[5m]))",
+              "legendFormat": "{{service_name}} (Python)"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "logs",
+          "title": "Live logs — namespace togglemaster",
+          "gridPos": {"x": 0, "y": 19, "w": 24, "h": 12},
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "loki", "uid": "loki"},
+              "expr": "{namespace=\"togglemaster\"} |~ \".+\"",
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }
