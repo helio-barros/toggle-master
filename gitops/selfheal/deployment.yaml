@@ -1,0 +1,95 @@
+# gitops/selfheal/deployment.yaml
+# Deployment + Service do selfheal-webhook.
+# Usa python:3.11-slim e instala no startup (so o cliente kubernetes, http.server e stdlib).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selfheal-webhook
+  namespace: monitoring
+  labels:
+    app: selfheal-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selfheal-webhook
+  template:
+    metadata:
+      labels:
+        app: selfheal-webhook
+    spec:
+      serviceAccountName: selfheal-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: webhook
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              echo "Installing kubernetes client..."
+              pip install --no-cache-dir --quiet --user kubernetes==30.1.0
+              echo "Starting webhook..."
+              exec python /app/webhook.py
+          env:
+            - name: PORT
+              value: "8080"
+            - name: ALLOWED_NAMESPACES
+              value: "togglemaster"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: HOME
+              value: /tmp
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: script
+              mountPath: /app
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+      volumes:
+        - name: script
+          configMap:
+            name: selfheal-webhook-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: selfheal-webhook
+  namespace: monitoring
+  labels:
+    app: selfheal-webhook
+spec:
+  type: ClusterIP
+  selector:
+    app: selfheal-webhook
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
