@@ -22,8 +22,19 @@ spec:
     groupWait: 30s
     groupInterval: 5m
     repeatInterval: 1h
-    # Sub-rota redundante removida: o matcher da raiz ja filtra por team,
-    # e todas as nossas regras ja tem severity=critical.
+    routes:
+      # Sub-rota: alertas PodDown tambem vao pro selfheal-webhook (restart automatico).
+      # `continue: true` deixa o alerta prosseguir para a rota default (pagerduty-critical)
+      # na mesma passada, entao o PodDown notifica o humano E dispara o rollout restart.
+      - receiver: selfheal-webhook
+        matchers:
+          - name: alertname
+            value: PodDown
+            matchType: =
+        continue: true
+        groupWait: 10s       # self-heal mais rapido que notificacao humana
+        groupInterval: 5m
+        repeatInterval: 15m
   receivers:
     - name: pagerduty-critical
       pagerdutyConfigs:
@@ -42,3 +53,7 @@ spec:
               value: '{{ .CommonLabels.alertname }}'
             - key: description
               value: '{{ .CommonAnnotations.description }}'
+    - name: selfheal-webhook
+      webhookConfigs:
+        - url: http://selfheal-webhook.monitoring.svc.cluster.local:8080/webhook
+          sendResolved: false  # resolve nao reverte restart

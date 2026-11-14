@@ -1,0 +1,117 @@
+# gitops/selfheal/configmap.yaml
+# Script Python servido via HTTP que recebe webhooks do Alertmanager,
+# extrai os labels `namespace` e `deployment` de cada alerta firing,
+# e faz `kubectl rollout restart` patchando a anotacao do pod template.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: selfheal-webhook-script
+  namespace: monitoring
+data:
+  webhook.py: |
+    #!/usr/bin/env python3
+    """
+    Alertmanager webhook receiver que faz rollout restart em deployments.
+    Payload esperado (v4):
+      {"alerts":[{"status":"firing","labels":{"namespace":"...","deployment":"..."}}]}
+    """
+    import datetime
+    import json
+    import logging
+    import os
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from kubernetes import client, config
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    log = logging.getLogger("selfheal")
+
+    # In-cluster: usa o ServiceAccount montado em /var/run/secrets/kubernetes.io/serviceaccount
+    config.load_incluster_config()
+    apps_v1 = client.AppsV1Api()
+
+    ALLOWED_NAMESPACES = os.environ.get("ALLOWED_NAMESPACES", "togglemaster").split(",")
+
+
+    def restart_deployment(namespace: str, deployment: str) -> str:
+        """Equivalente a kubectl rollout restart deployment/<name> -n <namespace>."""
+        now = datetime.datetime.utcnow().isoformat() + "Z"
+        body = {
+            "spec": {
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "kubectl.kubernetes.io/restartedAt": now,
+                            "selfheal.togglemaster.io/triggered-by": "alertmanager",
+                        }
+                    }
+                }
+            }
+        }
+        apps_v1.patch_namespaced_deployment(deployment, namespace, body)
+        return now
+
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            log.info("%s - %s", self.address_string(), fmt % args)
+
+        def do_GET(self):
+            if self.path in ("/healthz", "/"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                return
+            self.send_response(404)
+            self.end_headers()
+
+        def do_POST(self):
+            if self.path != "/webhook":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length)
+            try:
+                payload = json.loads(raw)
+            except Exception as e:
+                log.warning("payload invalido: %s", e)
+                self.send_response(400)
+                self.end_headers()
+                return
+
+            actions = []
+            for alert in payload.get("alerts", []):
+                if alert.get("status") != "firing":
+                    continue
+                labels = alert.get("labels", {})
+                ns = labels.get("namespace")
+                dep = labels.get("deployment")
+                alertname = labels.get("alertname", "?")
+                if not ns or not dep:
+                    log.info("skip: alert %s sem namespace/deployment (labels=%s)", alertname, labels)
+                    continue
+                if ns not in ALLOWED_NAMESPACES:
+                    log.warning("skip: namespace %s fora da allowlist (%s)", ns, ALLOWED_NAMESPACES)
+                    continue
+                try:
+                    stamp = restart_deployment(ns, dep)
+                    log.info("rollout restart %s/%s ok (annotation=%s, alert=%s)", ns, dep, stamp, alertname)
+                    actions.append({"namespace": ns, "deployment": dep, "restartedAt": stamp})
+                except client.ApiException as e:
+                    log.error("rollout restart %s/%s falhou: %s", ns, dep, e)
+                    actions.append({"namespace": ns, "deployment": dep, "error": str(e)})
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"actions": actions}).encode())
+
+
+    if __name__ == "__main__":
+        port = int(os.environ.get("PORT", "8080"))
+        log.info("selfheal-webhook listening on :%d allowed_namespaces=%s", port, ALLOWED_NAMESPACES)
+        HTTPServer(("0.0.0.0", port), Handler).serve_forever()

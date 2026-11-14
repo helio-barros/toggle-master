@@ -1,0 +1,34 @@
+# gitops/selfheal/rbac.yaml
+# Permite que o selfheal-webhook faca `rollout restart` em deployments do namespace togglemaster.
+# Equivale a: `kubectl rollout restart deployment/<name>` via patch da anotacao
+# `kubectl.kubernetes.io/restartedAt` no template do deployment.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: selfheal-webhook
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selfheal-webhook
+  namespace: togglemaster
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selfheal-webhook
+  namespace: togglemaster
+subjects:
+  - kind: ServiceAccount
+    name: selfheal-webhook
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: selfheal-webhook
+  apiGroup: rbac.authorization.k8s.io
