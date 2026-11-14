@@ -11,16 +11,19 @@ metadata:
 spec:
   route:
     receiver: pagerduty-critical
+    # Matcher na raiz: so captura alertas do time togglemaster (nossas PrometheusRules
+    # tem label team=togglemaster). Impede que alertas built-in (Watchdog, KubeCPUOvercommit,
+    # KubeMemoryOvercommit, etc.) caiam aqui.
+    matchers:
+      - name: team
+        value: togglemaster
+        matchType: =
     groupBy: ['alertname', 'job']
     groupWait: 30s
     groupInterval: 5m
     repeatInterval: 1h
-    routes:
-      - matchers:
-          - name: severity
-            value: critical
-            matchType: =
-        receiver: pagerduty-critical
+    # Sub-rota redundante removida: o matcher da raiz ja filtra por team,
+    # e todas as nossas regras ja tem severity=critical.
   receivers:
     - name: pagerduty-critical
       pagerdutyConfigs:
