@@ -1,0 +1,41 @@
+# gitops/monitoring/alertmanager-config.yaml
+# Rotea alertas com severity=critical para o PagerDuty via Events API v2.
+# A integration-key vem do Secret pagerduty-secrets (criado na Fase 4).
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: togglemaster-routing
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: togglemaster
+spec:
+  route:
+    receiver: pagerduty-critical
+    groupBy: ['alertname', 'job']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 1h
+    routes:
+      - matchers:
+          - name: severity
+            value: critical
+            matchType: =
+        receiver: pagerduty-critical
+  receivers:
+    - name: pagerduty-critical
+      pagerdutyConfigs:
+        - sendResolved: true
+          routingKey:
+            name: pagerduty-secrets
+            key: integration-key
+          description: '[{{ .Status | toUpper }}] {{ .CommonAnnotations.summary }}'
+          severity: '{{ if eq .Status "firing" }}critical{{ else }}info{{ end }}'
+          details:
+            - key: namespace
+              value: '{{ .CommonLabels.namespace }}'
+            - key: job
+              value: '{{ .CommonLabels.job }}'
+            - key: alertname
+              value: '{{ .CommonLabels.alertname }}'
+            - key: description
+              value: '{{ .CommonAnnotations.description }}'

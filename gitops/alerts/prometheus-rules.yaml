@@ -1,0 +1,58 @@
+# gitops/monitoring/prometheus-rules.yaml
+# Regras de alerta do ToggleMaster. O kube-prometheus-stack Operator
+# descobre esse PrometheusRule via selector (serviceMonitorSelectorNilUsesHelmValues:
+# false ja esta setado nos values, entao pega de qualquer namespace).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: togglemaster-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: togglemaster-5xx
+      interval: 30s
+      rules:
+        # Python services (flag, targeting, analytics) — metrica http_server_duration_milliseconds
+        - alert: HighHttp5xxPython
+          expr: |
+            (
+              sum by (job) (rate(http_server_duration_milliseconds_count{job=~".*-service", http_status_code=~"5.."}[5m]))
+              /
+              sum by (job) (rate(http_server_duration_milliseconds_count{job=~".*-service"}[5m]))
+            ) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+            team: togglemaster
+          annotations:
+            summary: "Alta taxa de 5xx em {{ $labels.job }}"
+            description: "Service {{ $labels.job }} com taxa de 5xx acima de 5% nos ultimos 5min (valor atual: {{ $value | humanizePercentage }})"
+
+        # Go services (auth, evaluation) — metrica http_server_request_duration_seconds
+        - alert: HighHttp5xxGo
+          expr: |
+            (
+              sum by (job) (rate(http_server_request_duration_seconds_count{job=~".*-service", http_response_status_code=~"5.."}[5m]))
+              /
+              sum by (job) (rate(http_server_request_duration_seconds_count{job=~".*-service"}[5m]))
+            ) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+            team: togglemaster
+          annotations:
+            summary: "Alta taxa de 5xx em {{ $labels.job }}"
+            description: "Service {{ $labels.job }} com taxa de 5xx acima de 5% nos ultimos 5min (valor atual: {{ $value | humanizePercentage }})"
+
+        # Pod indisponivel
+        - alert: PodDown
+          expr: kube_deployment_status_replicas_available{namespace="togglemaster"} < 1
+          for: 2m
+          labels:
+            severity: critical
+            team: togglemaster
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} sem replicas disponiveis"
+            description: "Nenhum pod pronto no deployment {{ $labels.deployment }} do namespace togglemaster ha mais de 2 min"

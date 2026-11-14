@@ -40,6 +40,12 @@ prometheus:
 alertmanager:
   enabled: true
   alertmanagerSpec:
+    # Descobre AlertmanagerConfig com a label abaixo em qualquer namespace
+    alertmanagerConfigSelector:
+      matchLabels:
+        alertmanagerConfig: togglemaster
+    alertmanagerConfigMatcherStrategy:
+      type: None
     resources:
       requests: { cpu: 50m, memory: 64Mi }
       limits:   { memory: 128Mi }
