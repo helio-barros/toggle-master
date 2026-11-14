@@ -19,7 +19,7 @@ data:
       "version": 1,
       "editable": true,
       "refresh": "15s",
-      "time": {"from": "now-30m", "to": "now"},
+      "time": {"from": "now-3h", "to": "now"},
       "tags": ["togglemaster", "tech-challenge", "fase-4"],
       "panels": [
         {
