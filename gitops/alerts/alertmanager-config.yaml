@@ -23,9 +23,9 @@ spec:
     groupInterval: 5m
     repeatInterval: 1h
     routes:
-      # Sub-rota: alertas PodDown tambem vao pro selfheal-webhook (restart automatico).
-      # `continue: true` deixa o alerta prosseguir para a rota default (pagerduty-critical)
-      # na mesma passada, entao o PodDown notifica o humano E dispara o rollout restart.
+      # Sub-rota 1: PodDown tambem vai pro selfheal-webhook (restart automatico).
+      # `continue: true` deixa o alerta prosseguir para a sub-rota 2 (catch-all),
+      # garantindo que PodDown seja entregue aos dois receivers em paralelo.
       - receiver: selfheal-webhook
         matchers:
           - name: alertname
@@ -35,6 +35,12 @@ spec:
         groupWait: 10s       # self-heal mais rapido que notificacao humana
         groupInterval: 5m
         repeatInterval: 15m
+      # Sub-rota 2: catch-all explicito para o PagerDuty.
+      # Necessario porque uma sub-rota com match + continue:true NAO cai de volta
+      # no receiver do route pai; ela so segue para as proximas sub-rotas irmas.
+      # Sem esta linha, PodDown ia somente para o selfheal-webhook e nao notificava o humano.
+      - receiver: pagerduty-critical
+        matchers: []
   receivers:
     - name: pagerduty-critical
       pagerdutyConfigs:
